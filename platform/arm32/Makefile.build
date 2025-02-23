@@ -1,0 +1,43 @@
+ifeq (${CROSS_COMPILE},)
+  export CROSS_COMPILE=arm-none-eabi-
+endif
+
+export AR				= $(CROSS_COMPILE)ar
+export AS				= $(CROSS_COMPILE)as
+export CC				= clang
+export CPP			= clang++
+export LD				= ld.lld
+export NM				= $(CROSS_COMPILE)nm
+export OBJCOPY	= $(CROSS_COMPILE)objcopy
+export OBJDUMP	= $(CROSS_COMPILE)objdump
+export RANLIB		= $(CROSS_COMPILE)ranlib
+export STRIP		= $(CROSS_COMPILE)strip
+
+export AFLAGS   =
+export LDFLAGS  = -target arm-linux-gnueabi-elf -nostdlib -nostartfiles -fuse-ld=/opt/homebrew/bin/ld.lld -fpic -fpie -static -Wl,--pic-veneer
+export CFLAGS 	+= -target armv7-linux-gnueabi-elf -mthumb -nostdlib -nostartfiles -std=c11 -ffreestanding -fpic -fpie -O1 
+export CFLAGS_CONFIG =
+
+$(BUILDROOT)/%.o: $(SRCROOT)/%.c
+	$(CC) -c -o $@ $< $(CFLAGS)
+
+$(BUILDROOT)/%.o: $(SRCROOT)/%.S
+	$(CC) -c -o $@ $< $(CFLAGS)
+
+ifeq ($(HAS_CUSTOM_LIBGEN),)
+ifneq ($(TARGETROOT),)
+LIBGEN_TARGET=$(TARGET)
+else ifneq ($(MODULE),)
+LIBGEN_TARGET=$(MODULE)
+else ifneq ($(PLATFORM),)
+LIBGEN_TARGET=$(PLATFORM)
+endif
+
+$(BUILDROOT)/$(LIBGEN_TARGET).a: $(foreach o,$(OBJS),$(BUILDROOT)/$(o))
+	$(AR) r $@ $?
+	$(RANLIB) $@
+
+ifeq ($(TARGETROOT),)
+all: $(BUILDROOT)/$(MODULE).a
+endif
+endif
